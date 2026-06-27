@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Modèle Mathématique — Stratégie Confluence</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #f0b429;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --muted: #4a4a6a;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --trigger: #a78bfa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  header {
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  header h1 {
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  header p {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* CONFLUENCE CHECKER */
+  .confluence-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .conf-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .conf-item.active {
+    border-color: var(--green);
+    background: rgba(34,197,94,0.08);
+  }
+
+  .conf-item.trigger-mode {
+    border-color: var(--trigger);
+    background: rgba(167,139,250,0.08);
+  }
+
+  .conf-item .conf-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .conf-item .conf-name {
+    font-size: 13px;
+    color: var(--text);
+    margin: 4px 0 2px;
+    font-weight: bold;
+  }
+
+  .conf-item .conf-status {
+    font-size: 16px;
+  }
+
+  .conf-item.active .conf-name { color: var(--green); }
+  .conf-item.trigger-mode .conf-name { color: var(--trigger); }
+
+  /* REJET SUB-CRITERIA */
+  .rejet-criteria {
+    background: rgba(167,139,250,0.05);
+    border: 1px solid rgba(167,139,250,0.2);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 14px;
+  }
+
+  .rejet-title {
+    font-size: 10px;
+    color: var(--trigger);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .rejet-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .rejet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .rejet-item.active {
+    border-color: var(--trigger);
+    background: rgba(167,139,250,0.1);
+  }
+
+  .rejet-check {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--muted);
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+
+  .rejet-item.active .rejet-check {
+    background: var(--trigger);
+    border-color: var(--trigger);
+    color: white;
+  }
+
+  .rejet-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.3;
+  }
+
+  .rejet-item.active .rejet-text { color: var(--text); }
+
+  /* SIGNAL BAR */
+  .signal-bar {
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    margin-bottom: 14px;
+    transition: all 0.3s;
+  }
+
+  .signal-bar.wait {
+    background: rgba(74,74,106,0.2);
+    border: 1px solid var(--muted);
+  }
+
+  .signal-bar.alert {
+    background: rgba(240,180,41,0.1);
+    border: 1px solid var(--accent);
+  }
+
+  .signal-bar.enter {
+    background: rgba(34,197,94,0.1);
+    border: 1px solid var(--green);
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  .signal-bar.reject {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid var(--red);
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+  }
+
+  .signal-status {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+
+  .signal-bar.wait .signal-status { color: var(--muted); }
+  .signal-bar.alert .signal-status { color: var(--accent); }
+  .signal-bar.enter .signal-status { color: var(--green); }
+  .signal-bar.reject .signal-status { color: var(--red); }
+
+  .signal-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* MATH PANEL */
+  .math-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .math-row:last-child { border-bottom: none; }
+
+  .math-label { color: var(--text-dim); }
+
+  .math-value {
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+  }
+
+  .math-value.positive { color: var(--green); }
+  .math-value.negative { color: var(--red); }
+  .math-value.neutral { color: var(--accent); }
+  .math-value.info { color: var(--blue); }
+
+  /* FORMULA DISPLAY */
+  .formula-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 12px;
+    color: var(--blue);
+    margin: 8px 0;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  /* DIRECTION SELECTOR */
+  .direction-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .dir-btn {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.15s;
+  }
+
+  .dir-btn.buy.active {
+    background: rgba(34,197,94,0.1);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .dir-btn.sell.active {
+    background: rgba(239,68,68,0.1);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* RESET BTN */
+  .reset-btn {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+  }
+
+  .reset-btn:hover {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+  }
+
+  /* FLOW DIAGRAM */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0;
+  }
+
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  .flow-step .step-num {
+    color: var(--accent);
+    font-weight: bold;
+    width: 16px;
+    flex-shrink: 0;
+  }
+
+  .flow-step .step-text { color: var(--text-dim); }
+  .flow-step .step-badge {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .badge-qualify { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .badge-trigger { background: rgba(167,139,250,0.15); color: var(--trigger); }
+
+  .flow-arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Modèle Confluence XAU/USD</h1>
+  <p>Système 4C — Qualification + Trigger — RR 1:2</p>
+</header>
+
+<!-- DIRECTION -->
+<div class="section">
+  <div class="section-title">Direction H1</div>
+  <div class="direction-row">
+    <button class="dir-btn buy" id="buyBtn" onclick="setDirection('BUY')">▲ BUY</button>
+    <button class="dir-btn sell" id="sellBtn" onclick="setDirection('SELL')">▼ SELL</button>
+  </div>
+</div>
+
+<!-- ORDRE D'ANALYSE -->
+<div class="section">
+  <div class="section-title">Ordre d'analyse</div>
+  <div class="flow">
+    <div class="flow-step">
+      <span class="step-num">1</span>
+      <span class="step-text">Tracer Fibonacci — identifier niveau clé</span>
+      <span class="step-badge badge-qualify">QUALIFY</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+      <span class="step-num">2</span>
+      <span class="step-text">RSI — zone extrême (≤30 / ≥70)</span>
+      <span class="step-badge badge-qualify">QUALIFY</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+      <span class="step-num">3</span>
+      <span class="step-text">MACD — croisement confirmatif</span>
+      <span class="step-badge badge-qualify">QUALIFY</span>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+      <span class="step-num">4</span>
+      <span class="step-text">Bougie de rejet — entrée immédiate</span>
+      <span class="step-badge badge-trigger">TRIGGER</span>
+    </div>
+  </div>
+</div>
+
+<!-- CONFLUENCES C1-C3 -->
+<div class="section">
+  <div class="section-title">Qualification (C1 + C2 + C3)</div>
+  <div class="confluence-grid">
+    <div class="conf-item" id="c1" onclick="toggleConf(1)">
+      <div class="conf-label">C1 · QUALIFICATION</div>
+      <div class="conf-name">RSI Extrême</div>
+      <div class="conf-status" id="c1-icon">○</div>
+    </div>
+    <div class="conf-item" id="c2" onclick="toggleConf(2)">
+      <div class="conf-label">C2 · QUALIFICATION</div>
+      <div class="conf-name">MACD Croisement</div>
+      <div class="conf-status" id="c2-icon">○</div>
+    </div>
+    <div class="conf-item" id="c3" onclick="toggleConf(3)">
+      <div class="conf-label">C3 · QUALIFICATION</div>
+      <div class="conf-name">Niveau Fibonacci</div>
+      <div class="conf-status" id="c3-icon">○</div>
+    </div>
+  </div>
+</div>
+
+<!-- TRIGGER C4 -->
+<div class="section">
+  <div class="section-title">Trigger (C4 — Rejet)</div>
+  <div class="rejet-criteria">
+    <div class="rejet-title">⚡ CRITÈRES OBJECTIFS — 3/4 minimum pour C4 = 1</div>
+    <div class="rejet-grid">
+      <div class="rejet-item" id="r1" onclick="toggleRejet(1)">
+        <div class="rejet-check" id="r1-check"></div>
+        <div class="rejet-text">Mèche ≥ 2× corps</div>
+      </div>
+      <div class="rejet-item" id="r2" onclick="toggleRejet(2)">
+        <div class="rejet-check" id="r2-check"></div>
+        <div class="rejet-text">Corps ferme opposé</div>
+      </div>
+      <div class="rejet-item" id="r3" onclick="toggleRejet(3)">
+        <div class="rejet-check" id="r3-check"></div>
+        <div class="rejet-text">Volume > moy. 3 bougies</div>
+      </div>
+      <div class="rejet-item" id="r4" onclick="toggleRejet(4)">
+        <div class="rejet-check" id="r4-check"></div>
+        <div class="rejet-text">Sur niveau Fibo validé</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNAL -->
+<div class="signal-bar wait" id="signalBar">
+  <div class="signal-status" id="signalStatus">EN ATTENTE</div>
+  <div class="signal-sub" id="signalSub">Cocher les confluences</div>
+</div>
+
+<!-- MATH -->
+<div class="section">
+  <div class="section-title">Modèle Mathématique</div>
+
+  <div class="formula-box" id="formulaBox">
+    E = 1(Q≥2) × 1(C4=1) × (3p - 1) × R
+  </div>
+
+  <div class="math-row">
+    <span class="math-label">Score qualification Q</span>
+    <span class="math-value neutral" id="scoreQ">0 / 3</span>
+  </div>
+  <div class="math-row">
+    <span class="math-label">Trigger C4</span>
+    <span class="math-value" id="scoreC4" style="color:var(--muted)">0 / 4 critères</span>
+  </div>
+  <div class="math-row">
+    <span class="math-label">Winrate estimé p(S)</span>
+    <span class="math-value info" id="winrate">—</span>
+  </div>
+  <div class="math-row">
+    <span class="math-label">Espérance E (en R)</span>
+    <span class="math-value" id="esperance" style="color:var(--muted)">—</span>
+  </div>
+  <div class="math-row">
+    <span class="math-label">Décision</span>
+    <span class="math-value" id="decision" style="color:var(--muted)">—</span>
+  </div>
+</div>
+
+<!-- RESET -->
+<button class="reset-btn" onclick="resetAll()">↺ RÉINITIALISER</button>
+
+<script>
+  const state = {
+    direction: null,
+    c: [false, false, false],
+    r: [false, false, false, false]
+  };
+
+  // Winrates par score total (Q + trigger)
+  const winrates = { 2: 0.35, 3: 0.50, 4: 0.65 };
+
+  function setDirection(d) {
+    state.direction = d;
+    document.getElementById('buyBtn').classList.toggle('active', d === 'BUY');
+    document.getElementById('sellBtn').classList.toggle('active', d === 'SELL');
+    update();
+  }
+
+  function toggleConf(i) {
+    state.c[i-1] = !state.c[i-1];
+    const el = document.getElementById('c' + i);
+    const icon = document.getElementById('c' + i + '-icon');
+    el.classList.toggle('active', state.c[i-1]);
+    icon.textContent = state.c[i-1] ? '✓' : '○';
+    update();
+  }
+
+  function toggleRejet(i) {
+    state.r[i-1] = !state.r[i-1];
+    const el = document.getElementById('r' + i);
+    const check = document.getElementById('r' + i + '-check');
+    el.classList.toggle('active', state.r[i-1]);
+    check.textContent = state.r[i-1] ? '✓' : '';
+    update();
+  }
+
+  function update() {
+    const Q = state.c.filter(Boolean).length;
+    const R = state.r.filter(Boolean).length;
+    const C4 = R >= 3 ? 1 : 0;
+    const totalScore = Q + C4;
+
+    // Update c4 display
+    const c4El = document.getElementById('scoreC4');
+    c4El.textContent = R + ' / 4 critères → C4 = ' + C4;
+    c4El.style.color = C4 === 1 ? 'var(--trigger)' : 'var(--muted)';
+
+    document.getElementById('scoreQ').textContent = Q + ' / 3';
+
+    const signalBar = document.getElementById('signalBar');
+    const signalStatus = document.getElementById('signalStatus');
+    const signalSub = document.getElementById('signalSub');
+    const espEl = document.getElementById('esperance');
+    const decEl = document.getElementById('decision');
+    const wrEl = document.getElementById('winrate');
+
+    // Signal logic
+    if (!state.direction) {
+      setSignal('wait', 'CHOISIR DIRECTION', 'Sélectionner BUY ou SELL d\'abord');
+      wrEl.textContent = '—';
+      espEl.textContent = '—';
+      espEl.className = 'math-value';
+      decEl.textContent = '—';
+      return;
+    }
+
+    if (Q < 2 && C4 === 0) {
+      setSignal('wait', 'EN ATTENTE', 'Qualifier le setup — cocher les confluences');
+      wrEl.textContent = '—';
+      espEl.textContent = '—';
+      espEl.className = 'math-value';
+      decEl.textContent = '—';
+    } else if (Q >= 2 && C4 === 0) {
+      setSignal('alert', '⚠ EN ALERTE', 'Setup qualifié — attendre la bougie de rejet');
+      const p = winrates[Q] || 0.35;
+      const E = (3 * p - 1).toFixed(2);
+      wrEl.textContent = (p * 100).toFixed(0) + '% (estimé)';
+      espEl.textContent = (E > 0 ? '+' : '') + E + 'R';
+      espEl.className = 'math-value ' + (E > 0 ? 'positive' : 'negative');
+      decEl.textContent = 'PRÊT — attendre C4';
+      decEl.style.color = 'var(--accent)';
+    } else if (Q >= 2 && C4 === 1) {
+      setSignal('enter', '✓ ENTRER ' + state.direction, 'Toutes conditions remplies — exécution immédiate');
+      const p = winrates[totalScore] || 0.50;
+      const E = (3 * p - 1).toFixed(2);
+      wrEl.textContent = (p * 100).toFixed(0) + '% (estimé)';
+      espEl.textContent = (E > 0 ? '+' : '') + E + 'R';
+      espEl.className = 'math-value positive';
+      decEl.textContent = '✓ ENTRÉE VALIDE';
+      decEl.style.color = 'var(--green)';
+    } else if (Q < 2 && C4 === 1) {
+      setSignal('reject', '✗ REJET SANS BASE', 'Trigger présent mais qualification insuffisante');
+      wrEl.textContent = '< 33%';
+      espEl.textContent = '< 0R';
+      espEl.className = 'math-value negative';
+      decEl.textContent = '✗ NE PAS ENTRER';
+      decEl.style.color = 'var(--red)';
+    }
+  }
+
+  function setSignal(type, status, sub) {
+    const bar = document.getElementById('signalBar');
+    bar.className = 'signal-bar ' + type;
+    document.getElementById('signalStatus').textContent = status;
+    document.getElementById('signalSub').textContent = sub;
+  }
+
+  function resetAll() {
+    state.direction = null;
+    state.c = [false, false, false];
+    state.r = [false, false, false, false];
+
+    document.getElementById('buyBtn').classList.remove('active');
+    document.getElementById('sellBtn').classList.remove('active');
+
+    [1,2,3].forEach(i => {
+      document.getElementById('c'+i).classList.remove('active');
+      document.getElementById('c'+i+'-icon').textContent = '○';
+    });
+
+    [1,2,3,4].forEach(i => {
+      document.getElementById('r'+i).classList.remove('active');
+      document.getElementById('r'+i+'-check').textContent = '';
+    });
+
+    update();
+  }
+
+  update();
+</script>
+</body>
+</html>
